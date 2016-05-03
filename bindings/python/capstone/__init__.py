@@ -4,7 +4,7 @@ from platform import system
 _python2 = sys.version_info[0] < 3
 if _python2:
     range = xrange
-from . import arm, arm64, m68k, mips, ppc, sparc, systemz, x86, xcore
+from . import arm, arm64, m68k, mips, ppc, sparc, systemz, x86, xcore, tms320c64x
 
 __all__ = [
     'Cs',
@@ -29,6 +29,7 @@ __all__ = [
     'CS_ARCH_SYSZ',
     'CS_ARCH_XCORE',
     'CS_ARCH_M68K',
+    'CS_ARCH_TMS320C64X',
     'CS_ARCH_ALL',
 
     'CS_MODE_LITTLE_ENDIAN',
@@ -126,7 +127,8 @@ CS_ARCH_SPARC = 5
 CS_ARCH_SYSZ = 6
 CS_ARCH_XCORE = 7
 CS_ARCH_M68K = 8
-CS_ARCH_MAX = 9
+CS_ARCH_TMS320C64X = 9
+CS_ARCH_MAX = 10
 CS_ARCH_ALL = 0xFFFF
 
 # disasm mode
@@ -300,6 +302,7 @@ class _cs_arch(ctypes.Union):
         ('sparc', sparc.CsSparc),
         ('sysz', systemz.CsSysz),
         ('xcore', xcore.CsXcore),
+        ('tms320c64x', tms320c64x.CsTMS320C64x),
     )
 
 class _cs_detail(ctypes.Structure):
@@ -609,6 +612,8 @@ class CsInsn(object):
             (self.cc, self.operands) = systemz.get_arch_info(self._raw.detail.contents.arch.sysz)
         elif arch == CS_ARCH_XCORE:
             (self.operands) = xcore.get_arch_info(self._raw.detail.contents.arch.xcore)
+        elif arch == CS_ARCH_TMS320C64X:
+            (self.condition, self.funit, self.parallel, self.operands) = tms320c64x.get_arch_info(self._raw.detail.contents.arch.tms320c64x)
 
 
     def __getattr__(self, name):
@@ -1028,7 +1033,7 @@ def debug():
 
     archs = { "arm": CS_ARCH_ARM, "arm64": CS_ARCH_ARM64, "m68k": CS_ARCH_M68K, \
         "mips": CS_ARCH_MIPS, "ppc": CS_ARCH_PPC, "sparc": CS_ARCH_SPARC, \
-        "sysz": CS_ARCH_SYSZ, 'xcore': CS_ARCH_XCORE }
+        "sysz": CS_ARCH_SYSZ, 'xcore': CS_ARCH_XCORE, "tms320c64x": CS_ARCH_TMS320C64X }
 
     all_archs = ""
     keys = archs.keys()
