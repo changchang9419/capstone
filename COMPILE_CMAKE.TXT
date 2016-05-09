@@ -16,8 +16,8 @@ Get CMake for free from http://www.cmake.org.
 
 (0) Tailor Capstone to your need.
 
-  Out of 9 archtitectures supported by Capstone (Arm, Arm64, M68K, Mips, PPC,
-  Sparc, SystemZ, X86 & XCore), if you just need several selected archs,
+  Out of 10 archtitectures supported by Capstone (Arm, Arm64, M68K, Mips, PPC,
+  Sparc, SystemZ, TMS320C64x, X86 & XCore), if you just need several selected archs,
   run "cmake" with the unwanted archs disabled (set to 0) as followings.
 
   - CAPSTONE_ARM_SUPPORT: support ARM. Run cmake with -DCAPSTONE_ARM_SUPPORT=0 to remove ARM.
@@ -27,10 +27,12 @@ Get CMake for free from http://www.cmake.org.
   - CAPSTONE_PPC_SUPPORT: support PPC. Run cmake with -DCAPSTONE_PPC_SUPPORT=0 to remove PPC.
   - CAPSTONE_SPARC_SUPPORT: support Sparc. Run cmake with -DCAPSTONE_SPARC_SUPPORT=0 to remove Sparc.
   - CAPSTONE_SYSZ_SUPPORT: support SystemZ. Run cmake with -DCAPSTONE_SYSZ_SUPPORT=0 to remove SystemZ.
+  - CAPSTONE_SYSZ_SUPPORT: support SystemZ. Run cmake with -DCAPSTONE_SYSZ_SUPPORT=0 to remove SystemZ.
+  - CAPSTONE_TMS320C64X_SUPPORT: support TMS320C64x. Run cmake with -DCAPSTONE_TMS320C64X_SUPPORT=0 to remove TMS320C64x.
   - CAPSTONE_XCORE_SUPPORT: support XCore. Run cmake with -DCAPSTONE_XCORE_SUPPORT=0 to remove XCore.
   - CAPSTONE_X86_SUPPORT: support X86. Run cmake with -DCAPSTONE_X86_SUPPORT=0 to remove X86.
 
-  By default, all 9 architectures are compiled in.
+  By default, all 10 architectures are compiled in.
 
 
   Besides, Capstone also allows some more customization via following macros.
