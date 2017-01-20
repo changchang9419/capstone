@@ -1852,13 +1852,13 @@
 {
 	X86_CLC, X86_INS_CLC,
 #ifndef CAPSTONE_DIET
-	{ 0 }, { 0 }, { 0 }, 0, 0
+	{ 0 }, { X86_REG_EFLAGS, 0 }, { 0 }, 0, 0
 #endif
 },
 {
 	X86_CLD, X86_INS_CLD,
 #ifndef CAPSTONE_DIET
-	{ 0 }, { 0 }, { 0 }, 0, 0
+	{ 0 }, { X86_REG_EFLAGS, 0 }, { 0 }, 0, 0
 #endif
 },
 {
@@ -1900,7 +1900,7 @@
 {
 	X86_CMC, X86_INS_CMC,
 #ifndef CAPSTONE_DIET
-	{ 0 }, { 0 }, { 0 }, 0, 0
+	{ 0 }, { X86_REG_EFLAGS, 0 }, { 0 }, 0, 0
 #endif
 },
 {
@@ -2954,7 +2954,7 @@
 #endif
 },
 {
-	X86_COM_FIPr, X86_INS_FCOMPI,
+	X86_COM_FIPr, X86_INS_FCOMIP,
 #ifndef CAPSTONE_DIET
 	{ 0 }, { X86_REG_EFLAGS, X86_REG_FPSW, 0 }, { 0 }, 0, 0
 #endif
@@ -15046,13 +15046,13 @@
 {
 	X86_STC, X86_INS_STC,
 #ifndef CAPSTONE_DIET
-	{ 0 }, { 0 }, { 0 }, 0, 0
+	{ 0 }, { X86_REG_EFLAGS, 0 }, { 0 }, 0, 0
 #endif
 },
 {
 	X86_STD, X86_INS_STD,
 #ifndef CAPSTONE_DIET
-	{ 0 }, { 0 }, { 0 }, 0, 0
+	{ 0 }, { X86_REG_EFLAGS, 0 }, { 0 }, 0, 0
 #endif
 },
 {
@@ -15914,7 +15914,7 @@
 #endif
 },
 {
-	X86_UCOM_FIPr, X86_INS_FUCOMPI,
+	X86_UCOM_FIPr, X86_INS_FUCOMIP,
 #ifndef CAPSTONE_DIET
 	{ X86_REG_ST0, 0 }, { X86_REG_EFLAGS, X86_REG_FPSW, 0 }, { 0 }, 0, 0
 #endif

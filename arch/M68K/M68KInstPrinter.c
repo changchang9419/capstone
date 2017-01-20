@@ -6,6 +6,10 @@
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #endif
+
+//Banned API Usage : strcat / sprintf is a Banned API as listed in dontuse.h for
+//security purposes.
+#pragma warning(disable:28719)
 #endif
 
 #include <stdio.h>	// DEBUG
@@ -113,8 +117,8 @@ static void registerBits(SStream* O, const cs_m68k_op* op)
 
 static void registerPair(SStream* O, const cs_m68k_op* op)
 {
-	SStream_concat(O, "%s:%s", s_reg_names[M68K_REG_D0 + (op->register_bits >> 4)],
-			s_reg_names[M68K_REG_D0 + (op->register_bits & 0xf)]);
+	SStream_concat(O, "%s:%s", s_reg_names[M68K_REG_D0 + op->reg_pair.reg_0],
+			s_reg_names[M68K_REG_D0 + op->reg_pair.reg_1]);
 }
 
 void printAddressingMode(SStream* O, const cs_m68k* inst, const cs_m68k_op* op)
@@ -141,12 +145,17 @@ void printAddressingMode(SStream* O, const cs_m68k* inst, const cs_m68k_op* op)
 		case M68K_AM_REGI_ADDR: SStream_concat(O, "(a%d)", (op->reg - M68K_REG_A0)); break;
 		case M68K_AM_REGI_ADDR_POST_INC: SStream_concat(O, "(a%d)+", (op->reg - M68K_REG_A0)); break;
 		case M68K_AM_REGI_ADDR_PRE_DEC: SStream_concat(O, "-(a%d)", (op->reg - M68K_REG_A0)); break;
-		case M68K_AM_REGI_ADDR_DISP: SStream_concat(O, "$%x(a%d)", op->mem.disp, (op->reg - M68K_REG_A0)); break;
-		case M68K_AM_PCI_DISP: SStream_concat(O, "$%x(pc)", op->mem.disp); break;
+		case M68K_AM_REGI_ADDR_DISP: SStream_concat(O, "%s$%x(a%d)", op->mem.disp < 0 ? "-" : "", abs(op->mem.disp), (op->reg - M68K_REG_A0)); break;
+		case M68K_AM_PCI_DISP: SStream_concat(O, "%s$%x(pc)", op->mem.disp < 0 ? "-" : "", abs(op->mem.disp)); break;
 		case M68K_AM_ABSOLUTE_DATA_SHORT: SStream_concat(O, "$%x.w", op->imm); break;
 		case M68K_AM_ABSOLUTE_DATA_LONG: SStream_concat(O, "$%x.l", op->imm); break;
-		case M68K_AM_IMMIDIATE:
+		case M68K_AM_IMMEDIATE:
 			 if (inst->op_size.type == M68K_SIZE_TYPE_FPU) {
+#if defined(_KERNEL_MODE)
+				 // Issue #681: Windows kernel does not support formatting float point
+				 SStream_concat(O, "#<float_point_unsupported>");
+				 break;
+#else
 				 if (inst->op_size.fpu_size == M68K_FPU_SIZE_SINGLE)
 					 SStream_concat(O, "#%f", op->simm);
 				 else if (inst->op_size.fpu_size == M68K_FPU_SIZE_DOUBLE)
@@ -154,14 +163,15 @@ void printAddressingMode(SStream* O, const cs_m68k* inst, const cs_m68k_op* op)
 				 else
 					 SStream_concat(O, "#<unsupported>");
 				 break;
+#endif
 			 }
 			 SStream_concat(O, "#$%x", op->imm);
 			 break;
 		case M68K_AM_PCI_INDEX_8_BIT_DISP:
-			SStream_concat(O, "$%x(pc,%s%s.%c)", op->mem.disp, s_spacing, getRegName(op->mem.index_reg), op->mem.index_size ? 'l' : 'w');
+			SStream_concat(O, "%s$%x(pc,%s%s.%c)", op->mem.disp < 0 ? "-" : "", abs(op->mem.disp), s_spacing, getRegName(op->mem.index_reg), op->mem.index_size ? 'l' : 'w');
 			break;
 		case M68K_AM_AREGI_INDEX_8_BIT_DISP:
-			SStream_concat(O, "$%x(%s,%s%s.%c)", op->mem.disp, getRegName(op->mem.base_reg), s_spacing, getRegName(op->mem.index_reg), op->mem.index_size ? 'l' : 'w');
+			SStream_concat(O, "%s$%x(%s,%s%s.%c)", op->mem.disp < 0 ? "-" : "", abs(op->mem.disp), getRegName(op->mem.base_reg), s_spacing, getRegName(op->mem.index_reg), op->mem.index_size ? 'l' : 'w');
 			break;
 		case M68K_AM_PCI_INDEX_BASE_DISP:
 		case M68K_AM_AREGI_INDEX_BASE_DISP:
@@ -227,6 +237,9 @@ void printAddressingMode(SStream* O, const cs_m68k* inst, const cs_m68k_op* op)
 }
 #endif
 
+#define m68k_sizeof_array(array) (int)(sizeof(array)/sizeof(array[0]))
+#define m68k_min(a, b) (a < b) ? a : b
+
 void M68K_printInst(MCInst* MI, SStream* O, void* PrinterInfo)
 {
 #ifndef CAPSTONE_DIET
@@ -237,11 +250,20 @@ void M68K_printInst(MCInst* MI, SStream* O, void* PrinterInfo)
 
 	detail = MI->flat_insn->detail;
 	if (detail) {
+		int regs_read_count = m68k_min(m68k_sizeof_array(detail->regs_read), info->regs_read_count);
+		int regs_write_count = m68k_min(m68k_sizeof_array(detail->regs_write), info->regs_write_count);
+		int groups_count = m68k_min(m68k_sizeof_array(detail->groups), info->groups_count);
+
 		memcpy(&detail->m68k, ext, sizeof(cs_m68k));
-		memcpy(&detail->groups, &info->groups, info->groups_count);
-		detail->groups_count = info->groups_count;
-		detail->regs_read_count = 0;
-		detail->regs_write_count = 0;
+
+		memcpy(&detail->regs_read, &info->regs_read, regs_read_count * sizeof(uint16_t));
+		detail->regs_read_count = regs_read_count;
+
+		memcpy(&detail->regs_write, &info->regs_write, regs_write_count * sizeof(uint16_t));
+		detail->regs_write_count = regs_write_count;
+
+		memcpy(&detail->groups, &info->groups, groups_count);
+		detail->groups_count = groups_count;
 	}
 
 	if (MI->Opcode == M68K_INS_INVALID) {

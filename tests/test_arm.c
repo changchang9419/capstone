@@ -3,8 +3,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../myinttypes.h"
 
+#include <capstone/platform.h>
 #include <capstone/capstone.h>
 
 static csh handle;
@@ -30,7 +30,7 @@ static void print_string_hex(char *comment, unsigned char *str, size_t len)
 	printf("\n");
 }
 
-static void print_insn_detail(csh handle, cs_insn *ins)
+static void print_insn_detail(csh cs_handle, cs_insn *ins)
 {
 	cs_arm *arm;
 	int i;
@@ -52,22 +52,27 @@ static void print_insn_detail(csh handle, cs_insn *ins)
 			default:
 				break;
 			case ARM_OP_REG:
-				printf("\t\toperands[%u].type: REG = %s\n", i, cs_reg_name(handle, op->reg));
+				printf("\t\toperands[%u].type: REG = %s\n", i, cs_reg_name(cs_handle, op->reg));
 				break;
 			case ARM_OP_IMM:
 				printf("\t\toperands[%u].type: IMM = 0x%x\n", i, op->imm);
 				break;
 			case ARM_OP_FP:
+#if defined(_KERNEL_MODE)
+				// Issue #681: Windows kernel does not support formatting float point
+				printf("\t\toperands[%u].type: FP = <float_point_unsupported>\n", i);
+#else
 				printf("\t\toperands[%u].type: FP = %f\n", i, op->fp);
+#endif
 				break;
 			case ARM_OP_MEM:
 				printf("\t\toperands[%u].type: MEM\n", i);
-				if (op->mem.base != X86_REG_INVALID)
+				if (op->mem.base != ARM_REG_INVALID)
 					printf("\t\t\toperands[%u].mem.base: REG = %s\n",
-							i, cs_reg_name(handle, op->mem.base));
-				if (op->mem.index != X86_REG_INVALID)
+							i, cs_reg_name(cs_handle, op->mem.base));
+				if (op->mem.index != ARM_REG_INVALID)
 					printf("\t\t\toperands[%u].mem.index: REG = %s\n",
-							i, cs_reg_name(handle, op->mem.index));
+							i, cs_reg_name(cs_handle, op->mem.index));
 				if (op->mem.scale != 1)
 					printf("\t\t\toperands[%u].mem.scale: %u\n", i, op->mem.scale);
 				if (op->mem.disp != 0)
@@ -115,7 +120,7 @@ static void print_insn_detail(csh handle, cs_insn *ins)
 			else
 				// shift with register
 				printf("\t\t\tShift: %u = %s\n", op->shift.type,
-						cs_reg_name(handle, op->shift.value));
+						cs_reg_name(cs_handle, op->shift.value));
 		}
 
 		if (op->vector_index != -1) {
@@ -154,13 +159,13 @@ static void print_insn_detail(csh handle, cs_insn *ins)
 		printf("\tMemory-barrier: %u\n", arm->mem_barrier);
 
 	// Print out all registers accessed by this instruction (either implicit or explicit)
-	if (!cs_regs_access(handle, ins,
+	if (!cs_regs_access(cs_handle, ins,
 				regs_read, &regs_read_count,
 				regs_write, &regs_write_count)) {
 		if (regs_read_count) {
 			printf("\tRegisters read:");
 			for(i = 0; i < regs_read_count; i++) {
-				printf(" %s", cs_reg_name(handle, regs_read[i]));
+				printf(" %s", cs_reg_name(cs_handle, regs_read[i]));
 			}
 			printf("\n");
 		}
@@ -168,7 +173,7 @@ static void print_insn_detail(csh handle, cs_insn *ins)
 		if (regs_write_count) {
 			printf("\tRegisters modified:");
 			for(i = 0; i < regs_write_count; i++) {
-				printf(" %s", cs_reg_name(handle, regs_write[i]));
+				printf(" %s", cs_reg_name(cs_handle, regs_write[i]));
 			}
 			printf("\n");
 		}
@@ -240,7 +245,7 @@ static void test()
 //#define THUMB_CODE "\x02\x47"	// bx r0
 //#define THUMB_CODE "\x0a\xbf" // itet eq
 
-#define THUMB_CODE "\x60\xf9\x1f\x04\xe0\xf9\x4f\x07\x70\x47\xeb\x46\x83\xb0\xc9\x68\x1f\xb1\x30\xbf\xaf\xf3\x20\x84\x52\xf8\x23\xf0"
+#define THUMB_CODE "\x60\xf9\x1f\x04\xe0\xf9\x4f\x07\x70\x47\x00\xf0\x10\xe8\xeb\x46\x83\xb0\xc9\x68\x1f\xb1\x30\xbf\xaf\xf3\x20\x84\x52\xf8\x23\xf0"
 //#define THUMB_CODE "\xe0\xf9\x4f\x07"
 
 #define THUMB_CODE2 "\x4f\xf0\x00\x01\xbd\xe8\x00\x88\xd1\xe8\x00\xf0\x18\xbf\xad\xbf\xf3\xff\x0b\x0c\x86\xf3\x00\x89\x80\xf3\x00\x8c\x4f\xfa\x99\xf6\xd0\xff\xa2\x01"
@@ -293,7 +298,7 @@ static void test()
 		},
 	};
 
-	uint64_t address = 0x1000;
+	uint64_t address = 0x80001000;
 	cs_insn *insn;
 	int i;
 	size_t count;
@@ -319,10 +324,10 @@ static void test()
 			printf("Disasm:\n");
 
 			for (j = 0; j < count; j++) {
-				printf("0x%"PRIx64":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
+				printf("0x%" PRIx64 ":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
 				print_insn_detail(handle, &insn[j]);
 			}
-			printf("0x%"PRIx64":\n", insn[j-1].address + insn[j-1].size);
+			printf("0x%" PRIx64 ":\n", insn[j-1].address + insn[j-1].size);
 
 			// free memory allocated by cs_disasm()
 			cs_free(insn, count);

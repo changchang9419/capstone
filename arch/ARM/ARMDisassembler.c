@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../../myinttypes.h"
+#include <capstone/platform.h>
 
 #include "ARMAddressingModes.h"
 #include "ARMBaseInfo.h"
@@ -777,10 +777,10 @@ static DecodeStatus _Thumb_getInstruction(cs_struct *ud, MCInst *MI, const uint8
 		return MCDisassembler_Fail;
 
 	if (ud->big_endian)
-		insn32 = (code[3] <<  24) |
-			(code[2] <<  16) |
-			(code[1] << 8) |
-			(code[0] << 0);
+		insn32 = (code[3] <<  0) |
+			(code[2] <<  8) |
+			(code[1] << 16) |
+			(code[0] << 24);
 	else
 		insn32 = (code[3] <<  8) |
 			(code[2] <<  0) |

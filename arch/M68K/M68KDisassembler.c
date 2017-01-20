@@ -48,8 +48,12 @@
 #include "M68KDisassembler.h"
 
 #ifndef DECL_SPEC
+#ifdef _MSC_VER
+#define DECL_SPEC __cdecl
+#else
 #define DECL_SPEC
-#endif
+#endif	// _MSC_VER
+#endif	// DECL_SPEC
 
 /* ======================================================================== */
 /* ============================ GENERAL DEFINES =========================== */
@@ -203,7 +207,7 @@ static uint64_t m68k_read_safe_64(const m68k_info *info, const uint64_t address)
 {
 	const uint64_t addr = (address - info->baseAddress) & info->address_mask;
 	if (addr > (info->code_len - 8)) {
-		return 0xaaaaaaaaaaaaaaaa;
+		return 0xaaaaaaaaaaaaaaaaLL;
 	}
 	return m68k_read_disassembler_64(info, addr);
 }
@@ -457,7 +461,7 @@ void get_ea_mode_op(m68k_info *info, cs_m68k_op* op, uint instruction, uint size
 			/* address register indirect with displacement*/
 			op->address_mode = M68K_AM_REGI_ADDR_DISP;
 			op->mem.base_reg = M68K_REG_A0 + (instruction & 7);
-			op->mem.disp = read_imm_16(info);
+			op->mem.disp = (int16_t)read_imm_16(info);
 			break;
 
 		case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
@@ -480,7 +484,7 @@ void get_ea_mode_op(m68k_info *info, cs_m68k_op* op, uint instruction, uint size
 		case 0x3a:
 			/* program counter with displacement */
 			op->address_mode = M68K_AM_PCI_DISP;
-			op->mem.disp = read_imm_16(info);
+			op->mem.disp = (int16_t)read_imm_16(info);
 			break;
 
 		case 0x3b:
@@ -489,7 +493,7 @@ void get_ea_mode_op(m68k_info *info, cs_m68k_op* op, uint instruction, uint size
 			break;
 
 		case 0x3c:
-			op->address_mode = M68K_AM_IMMIDIATE;
+			op->address_mode = M68K_AM_IMMEDIATE;
 			op->type = M68K_OP_IMM;
 
 			if (size == 1)
@@ -521,7 +525,7 @@ static cs_m68k* build_init_op(m68k_info *info, int opcode, int count, int size)
 
 	ext = &info->extension;
 
-	ext->op_count = count;
+	ext->op_count = (uint8_t)count;
 	ext->op_size.type = M68K_SIZE_TYPE_CPU;
 	ext->op_size.cpu_size = size;
 
@@ -593,7 +597,7 @@ static void build_rr(m68k_info *info, int opcode, uint8_t size, int imm)
 	if (imm > 0) {
 		ext->op_count = 3;
 		op2->type = M68K_OP_IMM;
-		op2->address_mode = M68K_AM_IMMIDIATE;
+		op2->address_mode = M68K_AM_IMMEDIATE;
 		op2->imm = imm;
 	}
 }
@@ -624,7 +628,7 @@ static void build_imm_ea(m68k_info *info, int opcode, uint8_t size, int imm)
 	op1 = &ext->operands[1];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = imm;
 
 	get_ea_mode_op(info, op1, info->ir, size);
@@ -640,7 +644,7 @@ static void build_3bit_d(m68k_info *info, int opcode, int size)
 	op1 = &ext->operands[1];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = g_3bit_qdata_table[(info->ir >> 9) & 7];
 
 	op1->address_mode = M68K_AM_REG_DIRECT_DATA;
@@ -657,7 +661,7 @@ static void build_3bit_ea(m68k_info *info, int opcode, int size)
 	op1 = &ext->operands[1];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = g_3bit_qdata_table[(info->ir >> 9) & 7];
 
 	get_ea_mode_op(info, op1, info->ir, size);
@@ -683,7 +687,7 @@ static void build_mm(m68k_info *info, int opcode, uint8_t size, int imm)
 	if (imm > 0) {
 		ext->op_count = 3;
 		op2->type = M68K_OP_IMM;
-		op2->address_mode = M68K_AM_IMMIDIATE;
+		op2->address_mode = M68K_AM_IMMEDIATE;
 		op2->imm = imm;
 	}
 }
@@ -748,7 +752,7 @@ static void build_imm_special_reg(m68k_info *info, int opcode, int imm, int size
 	op1 = &ext->operands[1];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = imm;
 
 	op1->address_mode = M68K_AM_NONE;
@@ -763,7 +767,7 @@ static void build_bxx(m68k_info *info, int opcode, int size, int jump_offset)
 	op = &ext->operands[0];
 
 	op->type = M68K_OP_IMM;
-	op->address_mode = M68K_AM_IMMIDIATE;
+	op->address_mode = M68K_AM_IMMEDIATE;
 	op->imm = jump_offset;
 
 	set_insn_group(info, M68K_GRP_JUMP);
@@ -792,7 +796,7 @@ static void build_dbxx(m68k_info *info, int opcode, int size, int jump_offset)
 	op0->reg = M68K_REG_D0 + (info->ir & 7);
 
 	op1->type = M68K_OP_IMM;
-	op1->address_mode = M68K_AM_IMMIDIATE;
+	op1->address_mode = M68K_AM_IMMEDIATE;
 	op1->imm = jump_offset;
 
 	set_insn_group(info, M68K_GRP_JUMP);
@@ -844,7 +848,7 @@ static void build_bitfield_ins(m68k_info *info, int opcode, int has_d_arg)
 	if (BIT_5(extension))
 		width = extension & 7;
 	else
-		width = g_5bit_data_table[extension & 31];
+		width = (uint8_t)g_5bit_data_table[extension & 31];
 
 	if (has_d_arg) {
 		ext->op_count = 2;
@@ -942,7 +946,7 @@ static void build_imm(m68k_info *info, int opcode, int data)
 	op = &ext->operands[0];
 
 	op->type = M68K_OP_IMM;
-	op->address_mode = M68K_AM_IMMIDIATE;
+	op->address_mode = M68K_AM_IMMEDIATE;
 	op->imm = data;
 }
 
@@ -979,19 +983,21 @@ static void build_cas2(m68k_info *info, int size)
 
 	op0->address_mode = M68K_AM_NONE;
 	op0->type = M68K_OP_REG_PAIR;
-	op0->register_bits = (((extension >> 16) & 7) << 4) | (extension & 7);
+	op0->reg_pair.reg_0 = (extension >> 16) & 7;
+	op0->reg_pair.reg_1 = extension & 7;
 
 	op1->address_mode = M68K_AM_NONE;
 	op1->type = M68K_OP_REG_PAIR;
-	op1->register_bits = (((extension >> 22) & 7) << 4) | ((extension >> 6) & 7);
+	op1->reg_pair.reg_0 = (extension >> 22) & 7;
+	op1->reg_pair.reg_1 = (extension >> 6) & 7;
 
 	reg_0 = (extension >> 28) & 7;
 	reg_1 = (extension >> 12) & 7;
 
 	op2->address_mode = M68K_AM_NONE;
 	op2->type = M68K_OP_REG_PAIR;
-	op2->register_bits = ((reg_0 + (BIT_1F(extension) ? 8 : 0)) << 4) |
-		(reg_1 + (BIT_F(extension) ? 8 : 0));
+	op2->reg_pair.reg_0 = reg_0 + (BIT_1F(extension) ? 8 : 0);
+	op2->reg_pair.reg_1 = reg_1 + (BIT_F(extension) ? 8 : 0);
 }
 
 static void build_chk2_cmp2(m68k_info *info, int size)
@@ -1051,7 +1057,7 @@ static void build_link(m68k_info *info, int disp, int size)
 	op0->address_mode = M68K_AM_NONE;
 	op0->reg = M68K_REG_A0 + (info->ir & 7);
 
-	op1->address_mode = M68K_AM_IMMIDIATE;
+	op1->address_mode = M68K_AM_IMMEDIATE;
 	op1->type = M68K_OP_IMM;
 	op1->imm = disp;
 }
@@ -1085,7 +1091,7 @@ static void build_cpush_cinv(m68k_info *info, int op_offset)
 	op0 = &ext->operands[0];
 	op1 = &ext->operands[1];
 
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->type = M68K_OP_IMM;
 	op0->imm = (info->ir >> 6) & 3;
 
@@ -1108,7 +1114,7 @@ static void build_movep_re(m68k_info *info, int size)
 	op1->address_mode = M68K_AM_REGI_ADDR_DISP;
 	op1->type = M68K_OP_MEM;
 	op1->mem.base_reg = M68K_REG_A0 + (info->ir & 7);
-	op1->mem.disp = read_imm_16(info);
+	op1->mem.disp = (int16_t)read_imm_16(info);
 }
 
 static void build_movep_er(m68k_info *info, int size)
@@ -1123,7 +1129,7 @@ static void build_movep_er(m68k_info *info, int size)
 	op0->address_mode = M68K_AM_REGI_ADDR_DISP;
 	op0->type = M68K_OP_MEM;
 	op0->mem.base_reg = M68K_REG_A0 + (info->ir & 7);
-	op0->mem.disp = read_imm_16(info);
+	op0->mem.disp = (int16_t)read_imm_16(info);
 
 	op1->reg = M68K_REG_D0 + ((info->ir >> 9) & 7);
 }
@@ -1797,7 +1803,7 @@ static void d68020_cpbcc_16(m68k_info *info)
 	ext = build_init_op(info, M68K_INS_FBF, 1, 2);
 	op0 = &ext->operands[0];
 
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->type = M68K_OP_IMM;
 	op0->imm = new_pc;
 }
@@ -1822,7 +1828,7 @@ static void d68020_cpbcc_32(m68k_info *info)
 	op0 = &ext->operands[0];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = new_pc;
 }
 
@@ -1850,7 +1856,7 @@ static void d68020_cpdbcc(m68k_info *info)
 
 	op0->reg = M68K_REG_D0 + (info->ir & 7);
 
-	op1->address_mode = M68K_AM_IMMIDIATE;
+	op1->address_mode = M68K_AM_IMMEDIATE;
 	op1->type = M68K_OP_IMM;
 	op1->imm = new_pc;
 }
@@ -1956,7 +1962,7 @@ static void d68020_cpgen(m68k_info *info)
 		op0 = &ext->operands[0];
 		op1 = &ext->operands[1];
 
-		op0->address_mode = M68K_AM_IMMIDIATE;
+		op0->address_mode = M68K_AM_IMMEDIATE;
 		op0->type = M68K_OP_IMM;
 		op0->imm = next & 0x3f;
 
@@ -2077,12 +2083,14 @@ static void d68020_cpgen(m68k_info *info)
 				ext->op_size.type = M68K_SIZE_TYPE_FPU;
 				ext->op_size.fpu_size = M68K_FPU_SIZE_SINGLE;
 				get_ea_mode_op(info, op0, info->ir, 4);
+				op0->type = M68K_OP_FP_SINGLE;
 				break;
 
 			case 0x05:
 				ext->op_size.type = M68K_SIZE_TYPE_FPU;
 				ext->op_size.fpu_size = M68K_FPU_SIZE_DOUBLE;
 				get_ea_mode_op(info, op0, info->ir, 8);
+				op0->type = M68K_OP_FP_DOUBLE;
 				break;
 
 			default :
@@ -2160,7 +2168,7 @@ static void d68020_cptrapcc_16(m68k_info *info)
 
 	op0 = &ext->operands[0];
 
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->type = M68K_OP_IMM;
 	op0->imm = extension2;
 }
@@ -2183,7 +2191,7 @@ static void d68020_cptrapcc_32(m68k_info *info)
 
 	op0 = &ext->operands[0];
 
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->type = M68K_OP_IMM;
 	op0->imm = extension2;
 }
@@ -2244,7 +2252,8 @@ static void d68020_divl(m68k_info *info)
 
 	op1->address_mode = M68K_AM_NONE;
 	op1->type = M68K_OP_REG_PAIR;
-	op1->register_bits = (reg_0 << 4) | reg_1;
+	op1->reg_pair.reg_0 = reg_0;
+	op1->reg_pair.reg_1 = reg_1;
 
 	if ((reg_0 == reg_1) || !BIT_A(extension)) {
 		op1->type = M68K_OP_REG;
@@ -2693,7 +2702,7 @@ static void d68000_moveq(m68k_info *info)
 	op1 = &ext->operands[1];
 
 	op0->type = M68K_OP_IMM;
-	op0->address_mode = M68K_AM_IMMIDIATE;
+	op0->address_mode = M68K_AM_IMMEDIATE;
 	op0->imm = (info->ir & 0xff);
 
 	op1->address_mode = M68K_AM_REG_DIRECT_DATA;
@@ -2789,7 +2798,8 @@ static void d68020_mull(m68k_info *info)
 
 	op1->address_mode = M68K_AM_NONE;
 	op1->type = M68K_OP_REG_PAIR;
-	op1->register_bits = (reg_0 << 4) | reg_1;
+	op1->reg_pair.reg_0 = reg_0;
+	op1->reg_pair.reg_1 = reg_1;
 
 	if (!BIT_A(extension)) {
 		op1->type = M68K_OP_REG;
@@ -3823,6 +3833,135 @@ static int instruction_is_valid(m68k_info *info, const unsigned int word_check)
 	return 1;
 }
 
+static int exists_reg_list(uint16_t *regs, uint8_t count, m68k_reg reg)
+{
+	uint8_t i;
+
+	for (i = 0; i < count; ++i) {
+		if (regs[i] == (uint16_t)reg)
+			return 1;
+	}
+
+	return 0;
+}
+
+static void add_reg_to_rw_list(m68k_info *info, m68k_reg reg, int write)
+{
+	if (reg == M68K_REG_INVALID)
+		return;
+
+	if (write)
+	{
+		if (exists_reg_list(info->regs_write, info->regs_write_count, reg))
+			return;
+
+		info->regs_write[info->regs_write_count++] = (uint16_t)reg;
+	}
+	else
+	{
+		if (exists_reg_list(info->regs_read, info->regs_read_count, reg))
+			return;
+
+		info->regs_read[info->regs_read_count++] = (uint16_t)reg;
+	}
+}
+
+static void update_am_reg_list(m68k_info *info, cs_m68k_op *op, int write)
+{
+	switch (op->address_mode) {
+		case M68K_AM_REG_DIRECT_ADDR:
+		case M68K_AM_REG_DIRECT_DATA:
+			add_reg_to_rw_list(info, op->reg, write);
+			break;
+
+		case M68K_AM_REGI_ADDR_POST_INC:
+		case M68K_AM_REGI_ADDR_PRE_DEC:
+			add_reg_to_rw_list(info, op->reg, 1);
+			break;
+
+		case M68K_AM_REGI_ADDR:
+		case M68K_AM_REGI_ADDR_DISP:
+			add_reg_to_rw_list(info, op->reg, 0);
+			break;
+
+		case M68K_AM_AREGI_INDEX_8_BIT_DISP:
+		case M68K_AM_AREGI_INDEX_BASE_DISP:
+		case M68K_AM_MEMI_POST_INDEX:
+		case M68K_AM_MEMI_PRE_INDEX:
+		case M68K_AM_PCI_INDEX_8_BIT_DISP:
+		case M68K_AM_PCI_INDEX_BASE_DISP:
+		case M68K_AM_PC_MEMI_PRE_INDEX:
+		case M68K_AM_PC_MEMI_POST_INDEX:
+			add_reg_to_rw_list(info, op->mem.index_reg, 0);
+			add_reg_to_rw_list(info, op->mem.base_reg, 0);
+			break;
+
+		// no register(s) in the other addressing modes
+		default:
+			break;
+	}
+}
+
+static void update_bits_range(m68k_info *info, m68k_reg reg_start, uint8_t bits, int write)
+{
+	int i;
+
+	for (i = 0; i < 8; ++i) {
+		if (bits & (1 << i)) {
+			add_reg_to_rw_list(info, reg_start + i, write);
+		}
+	}
+}
+
+static void update_reg_list_regbits(m68k_info *info, cs_m68k_op *op, int write)
+{
+	uint32_t bits = op->register_bits;
+	update_bits_range(info, M68K_REG_D0, bits & 0xff, write);
+	update_bits_range(info, M68K_REG_A0, (bits >> 8) & 0xff, write);
+	update_bits_range(info, M68K_REG_FP0, (bits >> 16) & 0xff, write);
+}
+
+static void update_op_reg_list(m68k_info *info, cs_m68k_op *op, int write)
+{
+	switch ((int)op->type) {
+		case M68K_OP_REG:
+			add_reg_to_rw_list(info, op->reg, write);
+			break;
+
+		case M68K_OP_MEM:
+			update_am_reg_list(info, op, write);
+			break;
+
+		case M68K_OP_REG_BITS:
+			update_reg_list_regbits(info, op, write);
+			break;
+
+		case M68K_OP_REG_PAIR:
+			add_reg_to_rw_list(info, M68K_REG_D0 + op->reg_pair.reg_0, write);
+			add_reg_to_rw_list(info, M68K_REG_D0 + op->reg_pair.reg_1, write);
+			break;
+	}
+}
+
+static void build_regs_read_write_counts(m68k_info *info)
+{
+	int i;
+
+	if (!info->extension.op_count)
+		return;
+
+	if (info->extension.op_count == 1) {
+		update_op_reg_list(info, &info->extension.operands[0], 1);
+	} else {
+		// first operand is always read
+		update_op_reg_list(info, &info->extension.operands[0], 0);
+
+		// remaning write
+		for (i = 1; i < info->extension.op_count; ++i)
+			update_op_reg_list(info, &info->extension.operands[i], 1);
+	}
+}
+
 static void m68k_setup_internals(m68k_info* info, MCInst* inst, unsigned int pc, unsigned int cpu_type)
 {
 	info->inst = inst;
@@ -3903,6 +4042,8 @@ bool M68K_getInstruction(csh ud, const uint8_t* code, size_t code_len, MCInst* i
 	m68k_info *info = (m68k_info*)handle->printer_info;
 
 	info->groups_count = 0;
+	info->regs_read_count = 0;
+	info->regs_write_count = 0;
 	info->code = code;
 	info->code_len = code_len;
 	info->baseAddress = address;
@@ -3925,6 +4066,8 @@ bool M68K_getInstruction(csh ud, const uint8_t* code, size_t code_len, MCInst* i
 		*size = 2;
 		return false;
 	}
+
+	build_regs_read_write_counts(info);
 
 #ifdef M68K_DEBUG
 	SStream_Init(&ss);

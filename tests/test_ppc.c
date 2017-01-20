@@ -2,8 +2,8 @@
 /* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013> */
 
 #include <stdio.h>
-#include "../myinttypes.h"
 
+#include <capstone/platform.h>
 #include <capstone/capstone.h>
 
 struct platform {
@@ -83,7 +83,7 @@ static void print_insn_detail(cs_insn *ins)
 				break;
 			case PPC_OP_MEM:
 				printf("\t\toperands[%u].type: MEM\n", i);
-				if (op->mem.base != X86_REG_INVALID)
+				if (op->mem.base != PPC_REG_INVALID)
 					printf("\t\t\toperands[%u].mem.base: REG = %s\n",
 							i, cs_reg_name(handle, op->mem.base));
 				if (op->mem.disp != 0)
@@ -126,7 +126,7 @@ static void test()
 		},
 		{
 			CS_ARCH_PPC,
-			CS_MODE_BIG_ENDIAN + CS_MODE_QPX,
+			(cs_mode)(CS_MODE_BIG_ENDIAN + CS_MODE_QPX),
 			(unsigned char*)PPC_CODE2,
 			sizeof(PPC_CODE2) - 1,
 			"PPC-64 + QPX",
@@ -157,10 +157,10 @@ static void test()
 			printf("Disasm:\n");
 
 			for (j = 0; j < count; j++) {
-				printf("0x%"PRIx64":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
+				printf("0x%" PRIx64 ":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
 				print_insn_detail(&insn[j]);
 			}
-			printf("0x%"PRIx64":\n", insn[j-1].address + insn[j-1].size);
+			printf("0x%" PRIx64 ":\n", insn[j-1].address + insn[j-1].size);
 
 			// free memory allocated by cs_disasm()
 			cs_free(insn, count);

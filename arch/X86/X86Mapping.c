@@ -4,6 +4,7 @@
 #ifdef CAPSTONE_HAS_X86
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "X86Mapping.h"
 #include "X86DisassemblerDecoder.h"
@@ -17,7 +18,7 @@ uint64_t arch_masks[9] = {
 	0,
 	0xffffffff,
 	0, 0, 0,
-	0xffffffffffffffff
+	0xffffffffffffffffLL
 };
 
 static x86_reg sib_base_map[] = {
@@ -934,12 +935,8 @@ static name_map insn_name_maps[] = {
 	{ X86_INS_FCMOVU, "fcmovu" },
 	{ X86_INS_CMOVS, "cmovs" },
 	{ X86_INS_CMP, "cmp" },
-	{ X86_INS_CMPPD, "cmppd" },
-	{ X86_INS_CMPPS, "cmpps" },
 	{ X86_INS_CMPSB, "cmpsb" },
-	{ X86_INS_CMPSD, "cmpsd" },
 	{ X86_INS_CMPSQ, "cmpsq" },
-	{ X86_INS_CMPSS, "cmpss" },
 	{ X86_INS_CMPSW, "cmpsw" },
 	{ X86_INS_CMPXCHG16B, "cmpxchg16b" },
 	{ X86_INS_CMPXCHG, "cmpxchg" },
@@ -947,7 +944,7 @@ static name_map insn_name_maps[] = {
 	{ X86_INS_COMISD, "comisd" },
 	{ X86_INS_COMISS, "comiss" },
 	{ X86_INS_FCOMP, "fcomp" },
-	{ X86_INS_FCOMPI, "fcompi" },
+	{ X86_INS_FCOMIP, "fcomip" },
 	{ X86_INS_FCOMI, "fcomi" },
 	{ X86_INS_FCOM, "fcom" },
 	{ X86_INS_FCOS, "fcos" },
@@ -1547,7 +1544,7 @@ static name_map insn_name_maps[] = {
 	{ X86_INS_FTST, "ftst" },
 	{ X86_INS_TZCNT, "tzcnt" },
 	{ X86_INS_TZMSK, "tzmsk" },
-	{ X86_INS_FUCOMPI, "fucompi" },
+	{ X86_INS_FUCOMIP, "fucomip" },
 	{ X86_INS_FUCOMI, "fucomi" },
 	{ X86_INS_FUCOMPP, "fucompp" },
 	{ X86_INS_FUCOMP, "fucomp" },
@@ -1586,10 +1583,6 @@ static name_map insn_name_maps[] = {
 	{ X86_INS_VBROADCASTI64X4, "vbroadcasti64x4" },
 	{ X86_INS_VBROADCASTSD, "vbroadcastsd" },
 	{ X86_INS_VBROADCASTSS, "vbroadcastss" },
-	{ X86_INS_VCMPPD, "vcmppd" },
-	{ X86_INS_VCMPPS, "vcmpps" },
-	{ X86_INS_VCMPSD, "vcmpsd" },
-	{ X86_INS_VCMPSS, "vcmpss" },
 	{ X86_INS_VCOMPRESSPD, "vcompresspd" },
 	{ X86_INS_VCOMPRESSPS, "vcompressps" },
 	{ X86_INS_VCVTDQ2PD, "vcvtdq2pd" },
@@ -2176,6 +2169,183 @@ static name_map insn_name_maps[] = {
 	{ X86_INS_XTEST, "xtest" },
 	{ X86_INS_FDISI8087_NOP, "fdisi8087_nop" },
 	{ X86_INS_FENI8087_NOP, "feni8087_nop" },
+
+	// pseudo instructions
+	{ X86_INS_CMPSS, "cmpss" },
+	{ X86_INS_CMPEQSS, "cmpeqss" },
+	{ X86_INS_CMPLTSS, "cmpltss" },
+	{ X86_INS_CMPLESS, "cmpless" },
+	{ X86_INS_CMPUNORDSS, "cmpunordss" },
+	{ X86_INS_CMPNEQSS, "cmpneqss" },
+	{ X86_INS_CMPNLTSS, "cmpnltss" },
+	{ X86_INS_CMPNLESS, "cmpnless" },
+	{ X86_INS_CMPORDSS, "cmpordss" },
+
+	{ X86_INS_CMPSD, "cmpsd" },
+	{ X86_INS_CMPEQSD, "cmpeqsd" },
+	{ X86_INS_CMPLTSD, "cmpltsd" },
+	{ X86_INS_CMPLESD, "cmplesd" },
+	{ X86_INS_CMPUNORDSD, "cmpunordsd" },
+	{ X86_INS_CMPNEQSD, "cmpneqsd" },
+	{ X86_INS_CMPNLTSD, "cmpnltsd" },
+	{ X86_INS_CMPNLESD, "cmpnlesd" },
+	{ X86_INS_CMPORDSD, "cmpordsd" },
+
+	{ X86_INS_CMPPS, "cmpps" },
+	{ X86_INS_CMPEQPS, "cmpeqps" },
+	{ X86_INS_CMPLTPS, "cmpltps" },
+	{ X86_INS_CMPLEPS, "cmpleps" },
+	{ X86_INS_CMPUNORDPS, "cmpunordps" },
+	{ X86_INS_CMPNEQPS, "cmpneqps" },
+	{ X86_INS_CMPNLTPS, "cmpnltps" },
+	{ X86_INS_CMPNLEPS, "cmpnleps" },
+	{ X86_INS_CMPORDPS, "cmpordps" },
+
+	{ X86_INS_CMPPD, "cmppd" },
+	{ X86_INS_CMPEQPD, "cmpeqpd" },
+	{ X86_INS_CMPLTPD, "cmpltpd" },
+	{ X86_INS_CMPLEPD, "cmplepd" },
+	{ X86_INS_CMPUNORDPD, "cmpunordpd" },
+	{ X86_INS_CMPNEQPD, "cmpneqpd" },
+	{ X86_INS_CMPNLTPD, "cmpnltpd" },
+	{ X86_INS_CMPNLEPD, "cmpnlepd" },
+	{ X86_INS_CMPORDPD, "cmpordpd" },
+
+	{ X86_INS_VCMPSS, "vcmpss" },
+	{ X86_INS_VCMPEQSS, "vcmpeqss" },
+	{ X86_INS_VCMPLTSS, "vcmpltss" },
+	{ X86_INS_VCMPLESS, "vcmpless" },
+	{ X86_INS_VCMPUNORDSS, "vcmpunordss" },
+	{ X86_INS_VCMPNEQSS, "vcmpneqss" },
+	{ X86_INS_VCMPNLTSS, "vcmpnltss" },
+	{ X86_INS_VCMPNLESS, "vcmpnless" },
+	{ X86_INS_VCMPORDSS, "vcmpordss" },
+	{ X86_INS_VCMPEQ_UQSS, "vcmpeq_uqss" },
+	{ X86_INS_VCMPNGESS, "vcmpngess" },
+	{ X86_INS_VCMPNGTSS, "vcmpngtss" },
+	{ X86_INS_VCMPFALSESS, "vcmpfalsess" },
+	{ X86_INS_VCMPNEQ_OQSS, "vcmpneq_oqss" },
+	{ X86_INS_VCMPGESS, "vcmpgess" },
+	{ X86_INS_VCMPGTSS, "vcmpgtss" },
+	{ X86_INS_VCMPTRUESS, "vcmptruess" },
+	{ X86_INS_VCMPEQ_OSSS, "vcmpeq_osss" },
+	{ X86_INS_VCMPLT_OQSS, "vcmplt_oqss" },
+	{ X86_INS_VCMPLE_OQSS, "vcmple_oqss" },
+	{ X86_INS_VCMPUNORD_SSS, "vcmpunord_sss" },
+	{ X86_INS_VCMPNEQ_USSS, "vcmpneq_usss" },
+	{ X86_INS_VCMPNLT_UQSS, "vcmpnlt_uqss" },
+	{ X86_INS_VCMPNLE_UQSS, "vcmpnle_uqss" },
+	{ X86_INS_VCMPORD_SSS, "vcmpord_sss" },
+	{ X86_INS_VCMPEQ_USSS, "vcmpeq_usss" },
+	{ X86_INS_VCMPNGE_UQSS, "vcmpnge_uqss" },
+	{ X86_INS_VCMPNGT_UQSS, "vcmpngt_uqss" },
+	{ X86_INS_VCMPFALSE_OSSS, "vcmpfalse_osss" },
+	{ X86_INS_VCMPNEQ_OSSS, "vcmpneq_osss" },
+	{ X86_INS_VCMPGE_OQSS, "vcmpge_oqss" },
+	{ X86_INS_VCMPGT_OQSS, "vcmpgt_oqss" },
+	{ X86_INS_VCMPTRUE_USSS, "vcmptrue_usss" },
+
+	{ X86_INS_VCMPSD, "vcmpsd" },
+	{ X86_INS_VCMPEQSD, "vcmpeqsd" },
+	{ X86_INS_VCMPLTSD, "vcmpltsd" },
+	{ X86_INS_VCMPLESD, "vcmplesd" },
+	{ X86_INS_VCMPUNORDSD, "vcmpunordsd" },
+	{ X86_INS_VCMPNEQSD, "vcmpneqsd" },
+	{ X86_INS_VCMPNLTSD, "vcmpnltsd" },
+	{ X86_INS_VCMPNLESD, "vcmpnlesd" },
+	{ X86_INS_VCMPORDSD, "vcmpordsd" },
+	{ X86_INS_VCMPEQ_UQSD, "vcmpeq_uqsd" },
+	{ X86_INS_VCMPNGESD, "vcmpngesd" },
+	{ X86_INS_VCMPNGTSD, "vcmpngtsd" },
+	{ X86_INS_VCMPFALSESD, "vcmpfalsesd" },
+	{ X86_INS_VCMPNEQ_OQSD, "vcmpneq_oqsd" },
+	{ X86_INS_VCMPGESD, "vcmpgesd" },
+	{ X86_INS_VCMPGTSD, "vcmpgtsd" },
+	{ X86_INS_VCMPTRUESD, "vcmptruesd" },
+	{ X86_INS_VCMPEQ_OSSD, "vcmpeq_ossd" },
+	{ X86_INS_VCMPLT_OQSD, "vcmplt_oqsd" },
+	{ X86_INS_VCMPLE_OQSD, "vcmple_oqsd" },
+	{ X86_INS_VCMPUNORD_SSD, "vcmpunord_ssd" },
+	{ X86_INS_VCMPNEQ_USSD, "vcmpneq_ussd" },
+	{ X86_INS_VCMPNLT_UQSD, "vcmpnlt_uqsd" },
+	{ X86_INS_VCMPNLE_UQSD, "vcmpnle_uqsd" },
+	{ X86_INS_VCMPORD_SSD, "vcmpord_ssd" },
+	{ X86_INS_VCMPEQ_USSD, "vcmpeq_ussd" },
+	{ X86_INS_VCMPNGE_UQSD, "vcmpnge_uqsd" },
+	{ X86_INS_VCMPNGT_UQSD, "vcmpngt_uqsd" },
+	{ X86_INS_VCMPFALSE_OSSD, "vcmpfalse_ossd" },
+	{ X86_INS_VCMPNEQ_OSSD, "vcmpneq_ossd" },
+	{ X86_INS_VCMPGE_OQSD, "vcmpge_oqsd" },
+	{ X86_INS_VCMPGT_OQSD, "vcmpgt_oqsd" },
+	{ X86_INS_VCMPTRUE_USSD, "vcmptrue_ussd" },
+
+	{ X86_INS_VCMPPS, "vcmpps" },
+	{ X86_INS_VCMPEQPS, "vcmpeqps" },
+	{ X86_INS_VCMPLTPS, "vcmpltps" },
+	{ X86_INS_VCMPLEPS, "vcmpleps" },
+	{ X86_INS_VCMPUNORDPS, "vcmpunordps" },
+	{ X86_INS_VCMPNEQPS, "vcmpneqps" },
+	{ X86_INS_VCMPNLTPS, "vcmpnltps" },
+	{ X86_INS_VCMPNLEPS, "vcmpnleps" },
+	{ X86_INS_VCMPORDPS, "vcmpordps" },
+	{ X86_INS_VCMPEQ_UQPS, "vcmpeq_uqps" },
+	{ X86_INS_VCMPNGEPS, "vcmpngeps" },
+	{ X86_INS_VCMPNGTPS, "vcmpngtps" },
+	{ X86_INS_VCMPFALSEPS, "vcmpfalseps" },
+	{ X86_INS_VCMPNEQ_OQPS, "vcmpneq_oqps" },
+	{ X86_INS_VCMPGEPS, "vcmpgeps" },
+	{ X86_INS_VCMPGTPS, "vcmpgtps" },
+	{ X86_INS_VCMPTRUEPS, "vcmptrueps" },
+	{ X86_INS_VCMPEQ_OSPS, "vcmpeq_osps" },
+	{ X86_INS_VCMPLT_OQPS, "vcmplt_oqps" },
+	{ X86_INS_VCMPLE_OQPS, "vcmple_oqps" },
+	{ X86_INS_VCMPUNORD_SPS, "vcmpunord_sps" },
+	{ X86_INS_VCMPNEQ_USPS, "vcmpneq_usps" },
+	{ X86_INS_VCMPNLT_UQPS, "vcmpnlt_uqps" },
+	{ X86_INS_VCMPNLE_UQPS, "vcmpnle_uqps" },
+	{ X86_INS_VCMPORD_SPS, "vcmpord_sps" },
+	{ X86_INS_VCMPEQ_USPS, "vcmpeq_usps" },
+	{ X86_INS_VCMPNGE_UQPS, "vcmpnge_uqps" },
+	{ X86_INS_VCMPNGT_UQPS, "vcmpngt_uqps" },
+	{ X86_INS_VCMPFALSE_OSPS, "vcmpfalse_osps" },
+	{ X86_INS_VCMPNEQ_OSPS, "vcmpneq_osps" },
+	{ X86_INS_VCMPGE_OQPS, "vcmpge_oqps" },
+	{ X86_INS_VCMPGT_OQPS, "vcmpgt_oqps" },
+	{ X86_INS_VCMPTRUE_USPS, "vcmptrue_usps" },
+
+	{ X86_INS_VCMPPD, "vcmppd" },
+	{ X86_INS_VCMPEQPD, "vcmpeqpd" },
+	{ X86_INS_VCMPLTPD, "vcmpltpd" },
+	{ X86_INS_VCMPLEPD, "vcmplepd" },
+	{ X86_INS_VCMPUNORDPD, "vcmpunordpd" },
+	{ X86_INS_VCMPNEQPD, "vcmpneqpd" },
+	{ X86_INS_VCMPNLTPD, "vcmpnltpd" },
+	{ X86_INS_VCMPNLEPD, "vcmpnlepd" },
+	{ X86_INS_VCMPORDPD, "vcmpordpd" },
+	{ X86_INS_VCMPEQ_UQPD, "vcmpeq_uqpd" },
+	{ X86_INS_VCMPNGEPD, "vcmpngepd" },
+	{ X86_INS_VCMPNGTPD, "vcmpngtpd" },
+	{ X86_INS_VCMPFALSEPD, "vcmpfalsepd" },
+	{ X86_INS_VCMPNEQ_OQPD, "vcmpneq_oqpd" },
+	{ X86_INS_VCMPGEPD, "vcmpgepd" },
+	{ X86_INS_VCMPGTPD, "vcmpgtpd" },
+	{ X86_INS_VCMPTRUEPD, "vcmptruepd" },
+	{ X86_INS_VCMPEQ_OSPD, "vcmpeq_ospd" },
+	{ X86_INS_VCMPLT_OQPD, "vcmplt_oqpd" },
+	{ X86_INS_VCMPLE_OQPD, "vcmple_oqpd" },
+	{ X86_INS_VCMPUNORD_SPD, "vcmpunord_spd" },
+	{ X86_INS_VCMPNEQ_USPD, "vcmpneq_uspd" },
+	{ X86_INS_VCMPNLT_UQPD, "vcmpnlt_uqpd" },
+	{ X86_INS_VCMPNLE_UQPD, "vcmpnle_uqpd" },
+	{ X86_INS_VCMPORD_SPD, "vcmpord_spd" },
+	{ X86_INS_VCMPEQ_USPD, "vcmpeq_uspd" },
+	{ X86_INS_VCMPNGE_UQPD, "vcmpnge_uqpd" },
+	{ X86_INS_VCMPNGT_UQPD, "vcmpngt_uqpd" },
+	{ X86_INS_VCMPFALSE_OSPD, "vcmpfalse_ospd" },
+	{ X86_INS_VCMPNEQ_OSPD, "vcmpneq_ospd" },
+	{ X86_INS_VCMPGE_OQPD, "vcmpge_oqpd" },
+	{ X86_INS_VCMPGT_OQPD, "vcmpgt_oqpd" },
+	{ X86_INS_VCMPTRUE_USPD, "vcmptrue_uspd" },
 };
 #endif
 
@@ -2446,6 +2616,25 @@ void X86_get_insn_id(cs_struct *h, cs_insn *insn, unsigned int id)
 							break;
 					}
 					break;
+
+				case X86_INS_RET:
+					switch(h->mode) {
+						case CS_MODE_16:
+							insn->detail->regs_write[0] = X86_REG_SP;
+							insn->detail->regs_read[0] = X86_REG_SP;
+							break;
+						case CS_MODE_32:
+							insn->detail->regs_write[0] = X86_REG_ESP;
+							insn->detail->regs_read[0] = X86_REG_ESP;
+							break;
+						default:	// 64-bit
+							insn->detail->regs_write[0] = X86_REG_RSP;
+							insn->detail->regs_read[0] = X86_REG_RSP;
+							break;
+					}
+					insn->detail->regs_write_count = 1;
+					insn->detail->regs_read_count = 1;
+					break;
 			}
 
 			memcpy(insn->detail->groups, insns[i].groups, sizeof(insns[i].groups));
@@ -2497,10 +2686,20 @@ static struct insn_reg insn_regs_att[] = {
 	{ X86_INSW, X86_REG_DX },
 	{ X86_INSL, X86_REG_DX },
 
-	{ X86_MOV64o64a, X86_REG_RAX },
-	{ X86_MOV32o32a, X86_REG_EAX },
-	{ X86_MOV64o32a, X86_REG_EAX },
+	{ X86_MOV8o16a, X86_REG_AL },
+	{ X86_MOV8o32a, X86_REG_AL },
+	{ X86_MOV8o64a, X86_REG_AL },
+
 	{ X86_MOV16o16a, X86_REG_AX },
+	{ X86_MOV16o32a, X86_REG_AX },
+	{ X86_MOV16o64a, X86_REG_AX },
+
+	{ X86_MOV32o16a, X86_REG_EAX },
+	{ X86_MOV32o32a, X86_REG_EAX },
+	{ X86_MOV32o64a, X86_REG_EAX },
+
+	{ X86_MOV64o32a, X86_REG_RAX },
+	{ X86_MOV64o64a, X86_REG_RAX },
 
 	{ X86_PUSHCS32, X86_REG_CS },
 	{ X86_PUSHDS32, X86_REG_DS },
@@ -2751,18 +2950,55 @@ static struct insn_reg2 insn_regs_intel2[] = {
 	{ X86_INVLPGA64, X86_REG_RAX, X86_REG_ECX, CS_AC_READ, CS_AC_READ },
 };
 
+static struct insn_reg insn_regs_intel_sorted [ARR_SIZE(insn_regs_intel)];
+
+// Explicitly specified calling convention with CAPSTONE_API so that it is always
+// compiled as __cdecl on MSVC and does not cause a compile error even when
+// default calling convention is __stdcall (eg. capstone_static_winkernel project)
+static int CAPSTONE_API regs_cmp(const void *a, const void *b)
+{
+	uint16_t l = ((struct insn_reg *)a)->insn;
+	uint16_t r = ((struct insn_reg *)b)->insn;
+	return (l - r);
+}
+
 // return register of given instruction id
 // return 0 if not found
 // this is to handle instructions embedding accumulate registers into AsmStrs[]
 x86_reg X86_insn_reg_intel(unsigned int id, enum cs_ac_type *access)
 {
-	unsigned int i;
+	static bool intel_regs_sorted = false;
+	unsigned int first = 0;
+	unsigned int last = ARR_SIZE(insn_regs_intel) - 1;
+	unsigned int mid;
 
-	for (i = 0; i < ARR_SIZE(insn_regs_intel); i++) {
-		if (insn_regs_intel[i].insn == id) {
-			if (access)
-				*access = insn_regs_intel[i].access;
-			return insn_regs_intel[i].reg;
+	if (!intel_regs_sorted) {
+		memcpy(insn_regs_intel_sorted, insn_regs_intel,
+				sizeof(insn_regs_intel_sorted));
+		qsort(insn_regs_intel_sorted,
+				ARR_SIZE(insn_regs_intel_sorted),
+				sizeof(struct insn_reg), regs_cmp);
+		intel_regs_sorted = true;
+	}
+
+	if (insn_regs_intel_sorted[0].insn > id ||
+			insn_regs_intel_sorted[last].insn < id) {
+		return 0;
+	}
+
+	while (first <= last) {
+		mid = (first + last) / 2;
+		if (insn_regs_intel_sorted[mid].insn < id) {
+			first = mid + 1;
+		} else if (insn_regs_intel_sorted[mid].insn == id) {
+			if (access) {
+				*access = insn_regs_intel_sorted[mid].access;
+			}
+			return insn_regs_intel_sorted[mid].reg;
+		} else {
+			if (mid == 0)
+				break;
+			last = mid - 1;
 		}
 	}
 

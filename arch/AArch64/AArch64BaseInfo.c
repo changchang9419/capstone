@@ -17,7 +17,8 @@
 #ifdef CAPSTONE_HAS_ARM64
 
 #if defined (WIN32) || defined (WIN64) || defined (_WIN32) || defined (_WIN64)
-#pragma warning(disable:4996)
+#pragma warning(disable:4996)			// disable MSVC's warning on strcpy()
+#pragma warning(disable:28719)		// disable MSVC's warning on strcpy()
 #endif
 
 #include "../../utils.h"
@@ -629,7 +630,7 @@ void A64SysRegMapper_toString(A64SysRegMapper *S, uint32_t Bits, char *result)
 	Op2S = utostr(Op2, false);
 
 	//printf("Op1S: %s, CRnS: %s, CRmS: %s, Op2S: %s\n", Op1S, CRnS, CRmS, Op2S);
-	dummy = sprintf(result, "s%s_%s_c%s_c%s_%s", Op0S, Op1S, CRnS, CRmS, Op2S);
+	dummy = cs_snprintf(result, 128, "s3_%s_c%s_c%s_%s", Op1S, CRnS, CRmS, Op2S);
 	(void)dummy;
 
 	cs_mem_free(Op0S);

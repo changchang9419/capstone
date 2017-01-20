@@ -18127,8 +18127,8 @@ static void printInstruction(MCInst *MI, SStream *O, MCRegisterInfo *MRI)
   /* 3922 */ 'c', 'v', 't', 'p', 'd', '2', 'p', 'i', 9, 0,
   /* 3932 */ 'c', 'v', 't', 't', 'p', 's', '2', 'p', 'i', 9, 0,
   /* 3943 */ 'c', 'v', 't', 'p', 's', '2', 'p', 'i', 9, 0,
-  /* 3953 */ 'f', 'c', 'o', 'm', 'p', 'i', 9, 0,
-  /* 3961 */ 'f', 'u', 'c', 'o', 'm', 'p', 'i', 9, 0,
+  /* 3953 */ 'f', 'c', 'o', 'm', 'i', 'p', 9, 0,
+  /* 3961 */ 'f', 'u', 'c', 'o', 'm', 'i', 'p', 9, 0,
   /* 3970 */ 'v', 'p', 'c', 'm', 'p', 'e', 's', 't', 'r', 'i', 9, 0,
   /* 3982 */ 'v', 'p', 'c', 'm', 'p', 'i', 's', 't', 'r', 'i', 9, 0,
   /* 3994 */ 'v', 'c', 'v', 't', 't', 's', 'd', '2', 's', 'i', 9, 0,
@@ -19239,12 +19239,28 @@ static void printInstruction(MCInst *MI, SStream *O, MCRegisterInfo *MRI)
   uint64_t Bits = (Bits2 << 32) | Bits1;
   // printf("Opcode ID = %u\n", opcode);
   // assert(Bits != 0 && "Cannot print this instruction.");
-  if (!X86_lockrep(MI, O))
+  if (!X86_lockrep(MI, O)) {
 #ifndef CAPSTONE_DIET
-    SStream_concat0(O, AsmStrs+(Bits & 16383)-1);
-#else
-	;
+    // HACK TODO
+    switch(opcode) {
+      default:
+        SStream_concat0(O, AsmStrs+(Bits & 16383)-1);
+        break;
+      case X86_MOV32sm:
+        SStream_concat0(O, "movw\t");
+        break;
+      case X86_ROL32r1:
+        SStream_concat0(O, "rol\t$1, ");
+        break;
+      case X86_LGS64rm:
+        SStream_concat0(O, "lgs\t");
+        break;
+      case X86_SLDT64m:
+        SStream_concat0(O, "sldt\t");
+        break;
+    }
 #endif
+  }
 
 
   // Fragment 0 encoded into 7 bits for 102 unique commands.

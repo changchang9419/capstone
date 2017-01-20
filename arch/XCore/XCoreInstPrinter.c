@@ -16,10 +16,15 @@
 
 #ifdef CAPSTONE_HAS_XCORE
 
+#if defined (WIN32) || defined (WIN64) || defined (_WIN32) || defined (_WIN64)
+#pragma warning(disable : 4996)			// disable MSVC's warning on strcpy()
+#pragma warning(disable : 28719)		// disable MSVC's warning on strcpy()
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../myinttypes.h"
+#include <capstone/platform.h>
 
 #include "XCoreInstPrinter.h"
 #include "../../MCInst.h"
@@ -46,15 +51,7 @@ void XCore_insn_extract(MCInst *MI, const char *code)
 	char *p, *p2;
 	char tmp[128];
 
-// make MSVC shut up on strcpy()
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4996)
-#endif
 	strcpy(tmp, code); // safe because code is way shorter than 128 bytes
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
 
 	// find the first space
 	p = strchr(tmp, ' ');
@@ -91,7 +88,7 @@ void XCore_insn_extract(MCInst *MI, const char *code)
 						// base register
 						if (MI->csh->detail) {
 							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].type = XCORE_OP_MEM;
-							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = id;
+							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = (uint8_t)id;
 							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = XCORE_REG_INVALID;
 							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.disp = 0;
 							MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.direct = 1;
@@ -109,7 +106,7 @@ void XCore_insn_extract(MCInst *MI, const char *code)
 							if (id) {
 								// index register
 								if (MI->csh->detail) {
-									MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = id;
+									MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = (uint8_t)id;
 								}
 							} else {
 								// a number means disp
@@ -160,7 +157,7 @@ static void set_mem_access(MCInst *MI, bool status, int reg)
 		if (reg != 0xffff && reg != -0xffff) {
 			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].type = XCORE_OP_MEM;
 			if (reg) {
-				MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = reg;
+				MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = (uint8_t)reg;
 			} else {
 				MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = XCORE_REG_INVALID;
 			}
@@ -171,7 +168,7 @@ static void set_mem_access(MCInst *MI, bool status, int reg)
 			// the last op should be the memory base
 			MI->flat_insn->detail->xcore.op_count--;
 			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].type = XCORE_OP_MEM;
-			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].reg;
+			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = (uint8_t)MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].reg;
 			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = XCORE_REG_INVALID;
 			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.disp = 0;
 			if (reg > 0)
@@ -181,7 +178,7 @@ static void set_mem_access(MCInst *MI, bool status, int reg)
 		}
 	} else {
 		if (reg) {
-			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = reg;
+			MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = (uint8_t)reg;
 			// done, create the next operand slot
 			MI->flat_insn->detail->xcore.op_count++;
 		}
@@ -199,9 +196,9 @@ static void _printOperand(MCInst *MI, MCOperand *MO, SStream *O)
 		if (MI->csh->detail) {
 			if (MI->csh->doing_mem) {
 				if (MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base == ARM_REG_INVALID)
-					MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = reg;
+					MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.base = (uint8_t)reg;
 				else
-					MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = reg;
+					MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].mem.index = (uint8_t)reg;
 			} else {
 				MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].type = XCORE_OP_REG;
 				MI->flat_insn->detail->xcore.operands[MI->flat_insn->detail->xcore.op_count].reg = reg;

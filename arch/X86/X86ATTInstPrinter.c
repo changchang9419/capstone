@@ -21,7 +21,7 @@
 #if !defined(CAPSTONE_HAS_OSXKERNEL)
 #include <ctype.h>
 #endif
-#include "../../myinttypes.h"
+#include <capstone/platform.h>
 #if defined(CAPSTONE_HAS_OSXKERNEL)
 #include <libkern/libkern.h>
 #else
@@ -225,7 +225,7 @@ static void printf512mem(MCInst *MI, unsigned OpNo, SStream *O)
 
 static void printSSECC(MCInst *MI, unsigned Op, SStream *OS)
 {
-	int64_t Imm = MCOperand_getImm(MCInst_getOperand(MI, Op)) & 7;
+	uint8_t Imm = (uint8_t)(MCOperand_getImm(MCInst_getOperand(MI, Op)) & 7);
 	switch (Imm) {
 		default: break;	// never reach
 		case    0: SStream_concat0(OS, "eq"); op_addSseCC(MI, X86_SSE_CC_EQ); break;
@@ -237,11 +237,13 @@ static void printSSECC(MCInst *MI, unsigned Op, SStream *OS)
 		case    6: SStream_concat0(OS, "nle"); op_addSseCC(MI, X86_SSE_CC_NLE); break;
 		case    7: SStream_concat0(OS, "ord"); op_addSseCC(MI, X86_SSE_CC_ORD); break;
 	}
+
+	MI->popcode_adjust = Imm + 1;
 }
 
 static void printAVXCC(MCInst *MI, unsigned Op, SStream *O)
 {
-	int64_t Imm = MCOperand_getImm(MCInst_getOperand(MI, Op)) & 0x1f;
+	uint8_t Imm = (uint8_t)(MCOperand_getImm(MCInst_getOperand(MI, Op)) & 0x1f);
 	switch (Imm) {
 		default: break;//printf("Invalid avxcc argument!\n"); break;
 		case    0: SStream_concat0(O, "eq"); op_addAvxCC(MI, X86_AVX_CC_EQ); break;
@@ -277,6 +279,8 @@ static void printAVXCC(MCInst *MI, unsigned Op, SStream *O)
 		case 0x1e: SStream_concat0(O, "gt_oq"); op_addAvxCC(MI, X86_AVX_CC_GT_OQ); break;
 		case 0x1f: SStream_concat0(O, "true_us"); op_addAvxCC(MI, X86_AVX_CC_TRUE_US); break;
 	}
+
+	MI->popcode_adjust = Imm + 1;
 }
 
 static void printXOPCC(MCInst *MI, unsigned Op, SStream *O)
@@ -654,7 +658,7 @@ static void printOperand(MCInst *MI, unsigned OpNo, SStream *O)
 					else
 						SStream_concat(O, "$%"PRIu64, imm);
 				} else {
-					if (imm == 0x8000000000000000)  // imm == -imm
+					if (imm == 0x8000000000000000LL)  // imm == -imm
 						SStream_concat0(O, "$0x8000000000000000");
 					else if (imm < -HEX_THRESHOLD)
 						SStream_concat(O, "$-0x%"PRIx64, -imm);
@@ -723,7 +727,7 @@ static void printOperand(MCInst *MI, unsigned OpNo, SStream *O)
 				MI->flat_insn->detail->x86.operands[MI->flat_insn->detail->x86.op_count].imm = imm;
 
 				if (opsize > 0)
-					MI->flat_insn->detail->x86.operands[MI->flat_insn->detail->x86.op_count].size = opsize;
+					MI->flat_insn->detail->x86.operands[MI->flat_insn->detail->x86.op_count].size = (uint8_t)opsize;
 				else if (MI->op1_size > 0)
 					MI->flat_insn->detail->x86.operands[MI->flat_insn->detail->x86.op_count].size = MI->op1_size;
 				else
@@ -798,6 +802,8 @@ static void printMemReference(MCInst *MI, unsigned Op, SStream *O)
 						SStream_concat(O, "%"PRIu64, DispVal);
 				}
 			}
+		} else {
+			//SStream_concat0(O, "0");
 		}
 	}
 
@@ -886,6 +892,15 @@ void X86_ATT_printInst(MCInst *MI, SStream *OS, void *info)
 		cs_mem_free(mnem);
 	else
 		printInstruction(MI, OS, info);
+
+	// HACK TODO: fix this in machine description
+	switch(MI->flat_insn->id) {
+		default: break;
+		case X86_INS_SYSEXIT:
+				 SStream_Init(OS);
+				 SStream_concat0(OS, "sysexit");
+				 break;
+	}
 
 	if (MI->has_imm) {
 		// if op_count > 1, then this operand's size is taken from the destination op

@@ -75,7 +75,7 @@ public class M68k_const {
 	public static final int M68K_AM_PC_MEMI_PRE_INDEX = 15;
 	public static final int M68K_AM_ABSOLUTE_DATA_SHORT = 16;
 	public static final int M68K_AM_ABSOLUTE_DATA_LONG = 17;
-	public static final int M68K_AM_IMMIDIATE = 18;
+	public static final int M68K_AM_IMMEDIATE = 18;
 
 	// Operand type for instruction's operands
 
@@ -83,9 +83,10 @@ public class M68k_const {
 	public static final int M68K_OP_REG = 1;
 	public static final int M68K_OP_IMM = 2;
 	public static final int M68K_OP_MEM = 3;
-	public static final int M68K_OP_FP = 4;
-	public static final int M68K_OP_REG_BITS = 5;
-	public static final int M68K_OP_REG_PAIR = 6;
+	public static final int M68K_OP_FP_SINGLE = 4;
+	public static final int M68K_OP_FP_DOUBLE = 5;
+	public static final int M68K_OP_REG_BITS = 6;
+	public static final int M68K_OP_REG_PAIR = 7;
 
 	public static final int M68K_CPU_SIZE_NONE = 0;
 	public static final int M68K_CPU_SIZE_BYTE = 1;

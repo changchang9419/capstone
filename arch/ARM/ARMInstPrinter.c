@@ -19,7 +19,7 @@
 #include <stdio.h>	// DEBUG
 #include <stdlib.h>
 #include <string.h>
-#include "../../myinttypes.h"
+#include <capstone/platform.h>
 
 #include "ARMInstPrinter.h"
 #include "ARMAddressingModes.h"
@@ -278,6 +278,7 @@ void ARM_post_printer(csh ud, cs_insn *insn, char *insn_asm, MCInst *mci)
 		insn->detail->arm.writeback = true;
 	} else if (mci->csh->mode & CS_MODE_THUMB) {
 		// handle some special instructions with writeback
+        //printf(">> Opcode = %u\n", mci->Opcode);
 		switch(mci->Opcode) {
 			default:
 				break;
@@ -329,6 +330,7 @@ void ARM_post_printer(csh ud, cs_insn *insn, char *insn_asm, MCInst *mci)
 		}
 	} else {	// ARM mode
 		// handle some special instructions with writeback
+        //printf(">> Opcode = %u\n", mci->Opcode);
 		switch(mci->Opcode) {
 			default:
 				break;
@@ -372,6 +374,7 @@ void ARM_post_printer(csh ud, cs_insn *insn, char *insn_asm, MCInst *mci)
 
 			case ARM_LDRB_POST_IMM:
 			case ARM_LDR_POST_IMM:
+			case ARM_LDR_POST_REG:
 			case ARM_STRB_POST_IMM:
 			case ARM_STR_POST_IMM:
 
@@ -415,10 +418,10 @@ void ARM_post_printer(csh ud, cs_insn *insn, char *insn_asm, MCInst *mci)
 		case ARM_MOVPCLR:
 			insn->detail->arm.operands[0].type = ARM_OP_REG;
 			insn->detail->arm.operands[0].reg = ARM_REG_PC;
-			insn->detail->arm.operands[0].access = CS_AC_READ;
+			insn->detail->arm.operands[0].access = CS_AC_WRITE;
 			insn->detail->arm.operands[1].type = ARM_OP_REG;
 			insn->detail->arm.operands[1].reg = ARM_REG_LR;
-			insn->detail->arm.operands[1].access = CS_AC_WRITE;
+			insn->detail->arm.operands[1].access = CS_AC_READ;
 			insn->detail->arm.op_count = 2;
 			break;
 	}
@@ -606,6 +609,14 @@ void ARM_printInst(MCInst *MI, SStream *O, void *Info)
 							if (Opcode == ARM_t2STMDB_UPD)
 								SStream_concat0(O, ".w");
 							SStream_concat0(O, "\t");
+
+							if (MI->csh->detail) {
+								MI->flat_insn->detail->regs_read[MI->flat_insn->detail->regs_read_count] = ARM_REG_SP;
+								MI->flat_insn->detail->regs_read_count++;
+								MI->flat_insn->detail->regs_write[MI->flat_insn->detail->regs_write_count] = ARM_REG_SP;
+								MI->flat_insn->detail->regs_write_count++;
+							}
+
 							printRegisterList(MI, 4, O);
 							return;
 						}
@@ -649,6 +660,8 @@ void ARM_printInst(MCInst *MI, SStream *O, void *Info)
 							if (Opcode == ARM_t2LDMIA_UPD)
 								SStream_concat0(O, ".w");
 							SStream_concat0(O, "\t");
+							// unlike LDM, POP only write to registers, so skip the 1st access code
+							MI->ac_idx = 1;
 							if (MI->csh->detail) {
 								MI->flat_insn->detail->regs_read[MI->flat_insn->detail->regs_read_count] = ARM_REG_SP;
 								MI->flat_insn->detail->regs_read_count++;
@@ -728,7 +741,7 @@ void ARM_printInst(MCInst *MI, SStream *O, void *Info)
 							 if (MI->csh->detail) {
 								 MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].type = ARM_OP_REG;
 								 MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].reg = BaseReg;
-								 MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].access = CS_AC_READ;
+								 MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].access = CS_AC_READ | CS_AC_WRITE;
 								 MI->flat_insn->detail->arm.op_count++;
 							 }
 							 if (Writeback) {
@@ -837,17 +850,20 @@ static void printOperand(MCInst *MI, unsigned OpNo, SStream *O)
 		// add 8 in ARM mode, or 4 in Thumb mode
 		// printf(">> opcode: %u\n", MCInst_getOpcode(MI));
 		if (ARM_rel_branch(MI->csh, opc)) {
+			uint32_t address;
+
 			// only do this for relative branch
 			if (MI->csh->mode & CS_MODE_THUMB) {
-				imm += (int32_t)MI->address + 4;
+				address = (uint32_t)MI->address + 4;
 				if (ARM_blx_to_arm_mode(MI->csh, opc)) {
 					// here need to align down to the nearest 4-byte address
-					imm &= ~3;
+					address &= ~3;
 				}
 			} else {
-				imm += (int32_t)MI->address + 8;
+				address = (uint32_t)MI->address + 8;
 			}
 
+			imm = address + imm;
 			printUInt32Bang(O, imm);
 		} else {
 			switch(MI->flat_insn->id) {
@@ -1792,7 +1808,7 @@ static void printNoHashImmediate(MCInst *MI, unsigned OpNum, SStream *O)
 	if (MI->csh->detail) {
 		if (MI->csh->doing_mem) {
 			MI->flat_insn->detail->arm.op_count--;
-			MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].neon_lane = tmp;
+			MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].neon_lane = (int8_t)tmp;
 			MI->ac_idx--;	// consecutive operands share the same access right
 		} else {
 			MI->flat_insn->detail->arm.operands[MI->flat_insn->detail->arm.op_count].type = ARM_OP_IMM;

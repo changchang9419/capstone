@@ -16,7 +16,7 @@
 
 #ifdef CAPSTONE_HAS_ARM64
 
-#include "../../myinttypes.h"
+#include <capstone/platform.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -1052,28 +1052,28 @@ static void printArithExtend(MCInst *MI, unsigned OpNum, SStream *O)
 		switch(ExtType) {
 			default:	// never reach
 			case AArch64_AM_UXTB:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_UXTB;
 				break;
 			case AArch64_AM_UXTH:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_UXTH;
 				break;
 			case AArch64_AM_UXTW:
 				ext = ARM64_EXT_UXTW;
 				break;
 			case AArch64_AM_UXTX:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_UXTX;
 				break;
 			case AArch64_AM_SXTB:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_SXTB;
 				break;
 			case AArch64_AM_SXTH:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_SXTH;
 				break;
 			case AArch64_AM_SXTW:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_SXTW;
 				break;
 			case AArch64_AM_SXTX:
-				ext = ARM64_EXT_UXTW;
+				ext = ARM64_EXT_SXTX;
 				break;
 		}
 
@@ -1275,7 +1275,12 @@ static void printFPImmOperand(MCInst *MI, unsigned OpNum, SStream *O)
 	double FPImm = MCOperand_isFPImm(MO) ? MCOperand_getFPImm(MO) : AArch64_AM_getFPImmFloat((int)MCOperand_getImm(MO));
 
 	// 8 decimal places are enough to perfectly represent permitted floats.
+#if defined(_KERNEL_MODE)
+	// Issue #681: Windows kernel does not support formatting float point
+	SStream_concat(O, "#<float_point_unsupported>");
+#else
 	SStream_concat(O, "#%.8f", FPImm);
+#endif
 	if (MI->csh->detail) {
 #ifndef CAPSTONE_DIET
 		uint8_t access;
@@ -1659,7 +1664,7 @@ static void printSystemPStateField(MCInst *MI, unsigned OpNo, SStream *O)
 
 static void printSIMDType10Operand(MCInst *MI, unsigned OpNo, SStream *O)
 {
-	unsigned RawVal = (unsigned)MCOperand_getImm(MCInst_getOperand(MI, OpNo));
+	uint8_t RawVal = (uint8_t)MCOperand_getImm(MCInst_getOperand(MI, OpNo));
 	uint64_t Val = AArch64_AM_decodeAdvSIMDModImmType10(RawVal);
 	SStream_concat(O, "#%#016llx", Val);
 	if (MI->csh->detail) {

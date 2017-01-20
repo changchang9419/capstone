@@ -2,8 +2,8 @@
 /* By Nguyen Anh Quynh <aquynh@gmail.com>, 2013-2014 */
 
 #include <stdio.h>
-#include "../myinttypes.h"
 
+#include <capstone/platform.h>
 #include <capstone/capstone.h>
 
 struct platform {
@@ -55,8 +55,27 @@ const char* s_addressing_modes[] = {
 
 	"Absolute Data Addressing  - Short",
 	"Absolute Data Addressing  - Long",
-	"Immidate value",
+	"Immediate value",
 };
+
+static void print_read_write_regs(cs_detail* detail)
+{
+	int i;
+
+	for (i = 0; i < detail->regs_read_count; ++i)
+	{
+		uint16_t reg_id = detail->regs_read[i];
+		const char* reg_name = cs_reg_name(handle, reg_id);
+		printf("\treading from reg: %s\n", reg_name);
+	}
+
+	for (i = 0; i < detail->regs_write_count; ++i)
+	{
+		uint16_t reg_id = detail->regs_write[i];
+		const char* reg_name = cs_reg_name(handle, reg_id);
+		printf("\twriting to reg:   %s\n", reg_name);
+	}
+}
 
 static void print_insn_detail(cs_insn *ins)
 {
@@ -73,6 +92,8 @@ static void print_insn_detail(cs_insn *ins)
 	if (m68k->op_count)
 		printf("\top_count: %u\n", m68k->op_count);
 
+	print_read_write_regs(detail);
+
 	printf("\tgroups_count: %u\n", detail->groups_count);
 
 	for (i = 0; i < m68k->op_count; i++) {
@@ -85,16 +106,6 @@ static void print_insn_detail(cs_insn *ins)
 				printf("\t\toperands[%u].type: REG = %s\n", i, cs_reg_name(handle, op->reg));
 				break;
 			case M68K_OP_IMM:
-				if (m68k->op_size.type == M68K_SIZE_TYPE_FPU) {
-					if (m68k->op_size.fpu_size == M68K_FPU_SIZE_SINGLE)
-						printf("\t\toperands[%u].type: IMM = %f\n", i, op->simm);
-					else if (m68k->op_size.fpu_size == M68K_FPU_SIZE_DOUBLE)
-						printf("\t\toperands[%u].type: IMM = %lf\n", i, op->dimm);
-					else
-						printf("\t\toperands[%u].type: IMM = <unsupported>\n", i);
-					break;
-				}
-
 				printf("\t\toperands[%u].type: IMM = 0x%x\n", i, (int)op->imm);
 				break;
 			case M68K_OP_MEM:
@@ -115,22 +126,27 @@ static void print_insn_detail(cs_insn *ins)
 
 				printf("\t\taddress mode: %s\n", s_addressing_modes[op->address_mode]);
 				break;
+			case M68K_OP_FP_SINGLE:
+				printf("\t\toperands[%u].type: FP_SINGLE\n", i);
+				printf("\t\t\toperands[%u].simm: %f\n", i, op->simm);
+				break;
+			case M68K_OP_FP_DOUBLE:
+				printf("\t\toperands[%u].type: FP_DOUBLE\n", i);
+				printf("\t\t\toperands[%u].dimm: %lf\n", i, op->dimm);
+				break;
 		}
 	}
 
 	printf("\n");
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 static void test()
 {
-#define M68K_CODE "\xd4\x40\x87\x5a\x4e\x71\x02\xb4\xc0\xde\xc0\xde\x5c\x00\x1d\x80\x71\x12\x01\x23\xf2\x3c\x44\x22\x40\x49\x0e\x56\x54\xc5\xf2\x3c\x44\x00\x44\x7a\x00\x00\xf2\x00\x0a\x28\x4E\xB9\x00\x00\x00\x12\x4E\x75"
-
+#define M68K_CODE "\x4C\x00\x54\x04\x48\xe7\xe0\x30\x4C\xDF\x0C\x07\xd4\x40\x87\x5a\x4e\x71\x02\xb4\xc0\xde\xc0\xde\x5c\x00\x1d\x80\x71\x12\x01\x23\xf2\x3c\x44\x22\x40\x49\x0e\x56\x54\xc5\xf2\x3c\x44\x00\x44\x7a\x00\x00\xf2\x00\x0a\x28\x4E\xB9\x00\x00\x00\x12\x4E\x75"
 	struct platform platforms[] = {
 		{
 			CS_ARCH_M68K,
-			CS_MODE_BIG_ENDIAN | CS_MODE_M68K_040,
+			(cs_mode)(CS_MODE_BIG_ENDIAN | CS_MODE_M68K_040),
 			(unsigned char*)M68K_CODE,
 			sizeof(M68K_CODE) - 1,
 			"M68K",
@@ -161,10 +177,10 @@ static void test()
 			printf("Disasm:\n");
 
 			for (j = 0; j < count; j++) {
-				printf("0x%"PRIx64":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
+				printf("0x%" PRIx64 ":\t%s\t%s\n", insn[j].address, insn[j].mnemonic, insn[j].op_str);
 				print_insn_detail(&insn[j]);
 			}
-			printf("0x%"PRIx64":\n", insn[j-1].address + insn[j-1].size);
+			printf("0x%" PRIx64 ":\n", insn[j-1].address + insn[j-1].size);
 
 			// free memory allocated by cs_disasm()
 			cs_free(insn, count);

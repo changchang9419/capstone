@@ -304,12 +304,6 @@ static insn_map insns[] = {
 #include "AArch64MappingInsn.inc"
 };
 
-// some alias instruction only need to be defined locally to satisfy
-// some lookup functions
-// just make sure these IDs never reuse any other IDs ARM_INS_*
-#define ARM64_INS_NEGS (unsigned short)-1
-#define ARM64_INS_NGCS (unsigned short)-2
-
 // given internal insn id, return public instruction info
 void AArch64_get_insn_id(cs_struct *h, cs_insn *insn, unsigned int id)
 {
@@ -1049,26 +1043,26 @@ void AArch64_reg_access(const cs_insn *insn,
 		switch((int)op->type) {
 			case ARM64_OP_REG:
 				if ((op->access & CS_AC_READ) && !arr_exist(regs_read, read_count, op->reg)) {
-					regs_read[read_count] = op->reg;
+					regs_read[read_count] = (uint16_t)op->reg;
 					read_count++;
 				}
 				if ((op->access & CS_AC_WRITE) && !arr_exist(regs_write, write_count, op->reg)) {
-					regs_write[write_count] = op->reg;
+					regs_write[write_count] = (uint16_t)op->reg;
 					write_count++;
 				}
 				break;
 			case ARM_OP_MEM:
 				// registers appeared in memory references always being read
 				if ((op->mem.base != ARM64_REG_INVALID) && !arr_exist(regs_read, read_count, op->mem.base)) {
-					regs_read[read_count] = op->mem.base;
+					regs_read[read_count] = (uint16_t)op->mem.base;
 					read_count++;
 				}
 				if ((op->mem.index != ARM64_REG_INVALID) && !arr_exist(regs_read, read_count, op->mem.index)) {
-					regs_read[read_count] = op->mem.index;
+					regs_read[read_count] = (uint16_t)op->mem.index;
 					read_count++;
 				}
 				if ((arm64->writeback) && (op->mem.base != ARM64_REG_INVALID) && !arr_exist(regs_write, write_count, op->mem.base)) {
-					regs_write[write_count] = op->mem.base;
+					regs_write[write_count] = (uint16_t)op->mem.base;
 					write_count++;
 				}
 			default:

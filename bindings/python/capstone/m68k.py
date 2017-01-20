@@ -1,6 +1,7 @@
 # Capstone Python bindings, by Nicolas PLANEL <nplanel@gmail.com>
 
-import ctypes, copy
+import ctypes
+from . import copy_ctypes_list
 from .m68k_const import *
 
 # define the API
@@ -11,12 +12,18 @@ class M68KOpMem(ctypes.Structure):
         ('in_base_reg', ctypes.c_uint),
         ('in_disp', ctypes.c_uint),
         ('out_disp', ctypes.c_uint),
-        ('disp', ctypes.c_ushort),
+        ('disp', ctypes.c_short),
         ('scale', ctypes.c_ubyte),
         ('bitfield', ctypes.c_ubyte),
         ('width', ctypes.c_ubyte),
         ('offset', ctypes.c_ubyte),
         ('index_size', ctypes.c_ubyte),
+    )
+
+class M68KOpRegPair(ctypes.Structure):
+    _fields_ = (
+        ('reg_0', ctypes.c_uint),
+        ('reg_1', ctypes.c_uint),
     )
 
 class M68KOpValue(ctypes.Union):
@@ -25,6 +32,7 @@ class M68KOpValue(ctypes.Union):
         ('dimm', ctypes.c_double),
         ('simm', ctypes.c_float),
         ('reg', ctypes.c_uint),
+        ('reg_pair', M68KOpRegPair),
         ('mem', M68KOpMem),
         ('register_bits', ctypes.c_uint),
     )
@@ -59,7 +67,7 @@ class M68KOp(ctypes.Structure):
     @property
     def register_bits(self):
         return self.value.register_bits
-    
+
 class M68KOpSize(ctypes.Structure):
     _fields_ = (
         ('type', ctypes.c_uint),
@@ -67,8 +75,8 @@ class M68KOpSize(ctypes.Structure):
     )
 
     def get(a):
-        return copy.deepcopy(type, size)
-    
+        return copy_ctypes_list(type, size)
+
 class CsM68K(ctypes.Structure):
     M68K_OPERAND_COUNT = 4
     _fields_ = (
@@ -78,5 +86,4 @@ class CsM68K(ctypes.Structure):
     )
 
 def get_arch_info(a):
-    return (copy.deepcopy(a.operands[:a.op_count]), a.op_size)
-
+    return (copy_ctypes_list(a.operands[:a.op_count]), a.op_size)
